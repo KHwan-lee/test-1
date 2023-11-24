@@ -64,6 +64,10 @@ int get_height(Node* node) {
 
 // 노드를 찾는 함수
 Node* find_node(int x, bool d, bool ins) {
+    if (root == NULL) {
+        if (d)cout << 0 << " ";
+        return NULL;
+    }
     Node* cur_node = root;
     int depth = 0;
     while (true) {
@@ -352,6 +356,68 @@ void find_unbalance(int val) {
     return;
 }
 
+//erase 후 불균형 찾기
+void find_unbalance2(Node* node) {
+    if (node == NULL)return;
+    Node* z = node;
+
+    // z 찾아주기
+    int l, r;
+    while (true) {
+        l = z->l_height;
+        r = z->r_height;
+        if (max(l, r) - min(l, r) > 1)break;
+        if (z->par == NULL)break;
+        z = z->par;
+    }
+
+    l = z->l_height;
+    r = z->r_height;
+    // 불균형이 발생하지 않은 경우
+    if (max(l, r) - min(l, r) <= 1)return;
+
+    // y, x 찾아주기
+    Node* y = NULL;
+    Node* x = NULL;
+    if (z->left_child == NULL && z->right_child == NULL)return;
+    if (get_height(z->left_child) <= get_height(z->right_child)) {
+        y = z->right_child;
+    }
+    else {
+        y = z->left_child;
+    }
+    if (y != NULL) {
+        if (y->left_child == NULL && y->right_child == NULL)return;
+        // y의 두 자식의 높이가 같을 경우 연산이 적은 방향으로 진행
+        if (get_height(y->left_child) == get_height(y->right_child)) {
+            // LL rotation
+            if (y == z->left_child) {
+                x = y->left_child;
+            }
+            // RR rotation
+            else {
+                x = y->right_child;
+            }
+        }
+        else {
+            if (get_height(y->left_child) > get_height(y->right_child)) {
+                x = y->left_child;
+            }
+            else {
+                x = y->right_child;
+            }
+        }
+    }
+
+    // z, y, x 배치에 따른 rotation 
+    if ((y == z->left_child) && (x == y->left_child))ll_rotation(z, y, x);
+    else if ((y == z->right_child) && (x == y->right_child))rr_rotation(z, y, x);
+    else if ((y == z->left_child) && (x == y->right_child))lr_rotation(z, y, x);
+    else if ((y == z->right_child) && (x == y->left_child))rl_rotation(z, y, x);
+
+    return;
+}
+
 // 삽입 함수
 void insert(int x) {
     Node* new_node = new Node(x);
@@ -382,7 +448,7 @@ void insert(int x) {
                 cur_node->r_height = get_height(cur_node->right_child) + 1;
             }
         }
-        find_unbalance(x);
+        find_unbalance2(new_node);
 
     }
 
@@ -394,7 +460,7 @@ void insert(int x) {
 // rank 함수 
 void node_rank(int x) {
     Node* node = find_node(x, true, false);
-
+    if (node == NULL) return;
     //cout << "info for node :" << node->l_num << " " << node->r_num << " " << node->l_height << " " << node->r_height << " ";
 
     // rank 계산
@@ -415,64 +481,7 @@ void node_rank(int x) {
     
 }
 
-//erase 후 불균형 찾기
-void find_unbalance2(Node* node) {
-    if (node == NULL)return;
-    Node* z = node;
 
-    // z 찾아주기
-    int l, r;
-    while (true) {
-        l = z->l_height;
-        r = z->r_height;
-        if (max(l, r) - min(l, r) > 1)break;
-        if (z->par == NULL)break;
-        z = z->par;
-    }
-
-    l = z->l_height;
-    r = z->r_height;
-    // 불균형이 발생하지 않은 경우
-    if (max(l, r) - min(l, r) <= 1)return;
-
-    // y, x 찾아주기
-    Node* y;
-    Node* x;
-    if (z->left_child == NULL && z->right_child == NULL)return;
-    if (get_height(z->left_child) >= get_height(z->right_child)) {
-        y = z->left_child;
-    }
-    else {
-        y = z->right_child;
-    }
-    if (y->left_child == NULL && y->right_child == NULL)return;
-    // y의 두 자식의 높이가 같을 경우 연산이 적은 방향으로 진행
-    if (get_height(y->left_child) == get_height(y->right_child)) {
-        // LL rotation
-        if (y == z->left_child) {
-            x = y->left_child;
-        }
-        // RR rotation
-        else {
-            x = y->right_child;
-        }
-    }
-    else {
-        if (get_height(y->left_child) > get_height(y->right_child)) {
-            x = y->left_child;
-        }
-        else {
-            x = y->right_child;
-        }
-    }
-
-    // z, y, x 배치에 따른 rotation 
-    if ((y == z->left_child) && (x == y->left_child))ll_rotation(z, y, x);
-    else if ((y == z->right_child) && (x == y->right_child))rr_rotation(z, y, x);
-    else if ((y == z->left_child) && (x == y->right_child))lr_rotation(z, y, x);
-    else if ((y == z->right_child) && (x == y->left_child))rl_rotation(z, y, x);
-
-}
 
 // erase 하는 node가 leaf인 경우
 void node_erase_leaf(Node* node) {
@@ -480,6 +489,7 @@ void node_erase_leaf(Node* node) {
     // 삭제 하는 node가 root 였던 경우
     if (par == NULL) {
         root = NULL;
+        delete node;
         return;
     }
     // 삭제된 노드의 관계 제거
@@ -502,16 +512,24 @@ void node_erase_leaf(Node* node) {
         //cur 이 par의 왼쪽 자식
         if (cur == par->left_child) {
             par->l_num--;
-            par->l_height = get_height(cur) + 1;
         }
         //cur이 par의 오른쪽 자식
         else {
             par->r_num--;
-            par->r_height = get_height(cur) + 1;
         }
+
+        // 높이 정보 갱신
+        if (par->left_child != NULL) {
+            par->l_height = get_height(par->left_child) + 1;
+        }
+        if (par->right_child != NULL) {
+            par->r_height = get_height(par->right_child) + 1;
+        }
+
         cur = par;
         par = par->par;
     }
+
     find_unbalance2(node->par);
     delete node;
 }
@@ -530,7 +548,6 @@ void node_erase_one_child(Node* node) {
             root = node->right_child;
             node->right_child->par = NULL;
         }
-        return;
     }
     // 삭제하는 노드의 부모가 있는 경우
     else {
@@ -591,10 +608,23 @@ void node_erase_one_child(Node* node) {
 // erase 하는 node의 child가 2개
 void node_erase_two_child(Node* node) {
     // 후임자 찾기
-    Node* successor = node->right_child;
-    while (true) {
-        if (successor->left_child == NULL)break;
-        successor = successor->left_child;
+    Node* successor;
+
+    // 오른쪽 자식이 리프노드
+    if (node->right_child->left_child == NULL && node->right_child->right_child == NULL) {
+        successor = node->right_child;
+    }
+    // 왼쪽 자식이 리프노드
+    else if (node->left_child->left_child == NULL && node->left_child->right_child == NULL) {
+        successor = node->left_child;
+    }
+    // 두 자식이 모두 내부노드 인 경우
+    else {
+        successor = node->right_child;
+        while (true) {
+            if (successor->left_child == NULL)break;
+            successor = successor->left_child;
+        }
     }
 
     node->key = successor->key;
@@ -606,19 +636,24 @@ void node_erase_two_child(Node* node) {
     else  {
         node_erase_one_child(successor);
     }
-    //delete successor;
 }
 
 // erase 함수  
 void node_erase(int x) {
     Node* node = find_node(x, true, false);
+    if (node == NULL) {
+        return;
+    }
+    if (node->key != x)return;
     // 리프 노드
     if (node->left_child == NULL && node->right_child == NULL) {
         node_erase_leaf(node);
     }
+    // 자식이 1개
     else if (node->left_child == NULL || node->right_child == NULL) {
         node_erase_one_child(node);
     }
+    // 자식이 2개
     else {
         node_erase_two_child(node);
     }
@@ -672,7 +707,7 @@ int main() {
                 cin >> x;
                 node_erase(x);
             }
-            cout << endl;
+            cout  << endl;
         }
     }
 
